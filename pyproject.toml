@@ -4,7 +4,6 @@ version = "0.1.0"
 description = "Converte uma cena estilo Blender em um site interativo."
 readme = "README.md"
 requires-python = ">=3.11"
-license = { text = "MIT" }
 authors = [{ name = "Gabriel Teramae" }]
 dependencies = []
 
