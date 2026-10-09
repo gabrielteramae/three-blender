@@ -15,6 +15,18 @@ class ExportTests(unittest.TestCase):
         self.assertEqual(len(scene["objects"]), 4)
         self.assertEqual(scene["objects"][2]["name"], "lampada")
 
+    def test_rejects_non_positive_scale(self):
+        with self.assertRaises(ValueError):
+            validate_scene({"objects": [{"type": "box", "scale": [1, 0, 1]}]})
+
+    def test_viewer_pinches(self):
+        scene = load_scene(ROOT / "examples" / "studio.json")
+        with tempfile.TemporaryDirectory() as tmp:
+            out = export_site(scene, tmp)
+            write_viewer(out)
+            source = (out / "viewer.js").read_text(encoding="utf-8")
+            self.assertIn("pinchDist", source)
+
     def test_rejects_unknown_type(self):
         with self.assertRaises(ValueError):
             validate_scene({"objects": [{"type": "torus", "name": "x"}]})

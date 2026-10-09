@@ -28,6 +28,8 @@ def validate_scene(data: dict) -> dict:
             raise ValueError(f"objeto {name}: cor inválida")
         position = _vec(obj.get("position"), (0, 0.5, 0), name)
         scale = _vec(obj.get("scale"), (1, 1, 1), name)
+        if any(axis <= 0 for axis in scale):
+            raise ValueError(f"objeto {name}: escala precisa ser positiva")
         clean.append(
             {
                 "type": kind,
@@ -150,12 +152,23 @@ function apply() {
 apply();
 
 const pointers = new Map();
+let pinchDist = 0;
 canvas.addEventListener("pointerdown", (event) => {
   canvas.setPointerCapture(event.pointerId);
   pointers.set(event.pointerId, { x: event.clientX, y: event.clientY });
+  if (pointers.size >= 2) {
+    const [a, b] = [...pointers.values()];
+    pinchDist = Math.hypot(a.x - b.x, a.y - b.y) || 1;
+  }
 });
-canvas.addEventListener("pointerup", (event) => pointers.delete(event.pointerId));
-canvas.addEventListener("pointercancel", (event) => pointers.delete(event.pointerId));
+canvas.addEventListener("pointerup", (event) => {
+  pointers.delete(event.pointerId);
+  if (pointers.size < 2) pinchDist = 0;
+});
+canvas.addEventListener("pointercancel", (event) => {
+  pointers.delete(event.pointerId);
+  if (pointers.size < 2) pinchDist = 0;
+});
 canvas.addEventListener("pointermove", (event) => {
   const prev = pointers.get(event.pointerId);
   if (!prev) return;
@@ -163,7 +176,19 @@ canvas.addEventListener("pointermove", (event) => {
   const dy = event.clientY - prev.y;
   prev.x = event.clientX;
   prev.y = event.clientY;
-  if (event.shiftKey || pointers.size > 1) return;
+  if (pointers.size > 1) {
+    const [a, b] = [...pointers.values()];
+    const dist = Math.hypot(a.x - b.x, a.y - b.y) || 1;
+    if (pinchDist > 0) {
+      radius = Math.min(40, Math.max(1.2, radius * (pinchDist / dist)));
+      apply();
+    }
+    pinchDist = dist;
+    return;
+  }
+  const dx = event.clientX - prev.x;
+  const dy = event.clientY - prev.y;
+  if (event.shiftKey) return;
   theta -= dx * 0.008;
   phi = Math.min(Math.PI - 0.08, Math.max(0.08, phi + dy * 0.008));
   apply();
